@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>RoadWatch - Citizen Road Infrastructure Monitor</title>
+    <!-- Google Fonts & Font Awesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Three.js Core & Addons -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            background-color: #0a0f1c;
+            color: #eef2ff;
+        }
+
+        /* UI Overlay */
+        .ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            pointer-events: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.2rem 2rem;
+            background: rgba(10, 15, 28, 0.75);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .logo h1 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FFB347, #FF6B6B, #3b82f6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.5px;
+        }
+        .logo span {
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: #94a3b8;
+            display: block;
+        }
+
+        .stats-badge {
+            display: flex;
+            gap: 1.5rem;
+            background: rgba(0,0,0,0.5);
+            padding: 0.5rem 1.2rem;
+            border-radius: 60px;
+            backdrop-filter: blur(4px);
+        }
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+        .stat i {
+            font-size: 1.2rem;
+            color: #facc15;
+        }
+
+        /* Main Card Panel (right side) */
+        .dashboard-card {
+            pointer-events: auto;
+            position: absolute;
+            bottom: 2rem;
+            right: 2rem;
+            width: 360px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border-radius: 28px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 25px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .card-header {
+            padding: 1.2rem 1.5rem;
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .card-header i {
+            font-size: 1.8rem;
+            color: #facc15;
+        }
+        .card-header h2 {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .card-content {
+            padding: 1.2rem 1.5rem 1.5rem;
+        }
+
+        .report-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            background: rgba(255,255,255,0.1);
+            border-radius: 60px;
+            padding: 0.6rem 1rem;
+            gap: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.2s;
+        }
+        .input-group i {
+            color: #94a3b8;
+            width: 20px;
+        }
+        .input-group input, .input-group select {
+            background: transparent;
+            border: none;
+            color: white;
+            width: 100%;
+            font-size: 0.9rem;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+        }
+        .input-group select option {
+            background: #1e293b;
+        }
+        .submit-btn {
+            background: linear-gradient(95deg, #3b82f6, #8b5cf6);
+            border: none;
+            padding: 0.8rem;
+            border-radius: 40px;
+            font-weight: 700;
+            color: white;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 0.5rem;
+        }
+        .submit-btn:hover {
+            transform: scale(0.98);
+            filter: brightness(1.05);
+        }
+
+        .reports-list {
+            margin-top: 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.15);
+            padding-top: 1rem;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .reports-list h4 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            margin-bottom: 10px;
+        }
+        .report-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 0.6rem;
+            margin-bottom: 8px;
+            font-size: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.1s;
+        }
+        .report-badge {
+            background: #facc1522;
+            color: #facc15;
+            border-radius: 20px;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+        .expense-track {
+            background: #02061766;
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            margin-top: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        /* left bottom legend */
+        .legend {
+            pointer-events: auto;
+            position: absolute;
+            bottom: 2rem;
+            left: 2rem;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            padding: 0.6rem 1rem;
+            border-radius: 32px;
+            font-size: 0.7rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        /* responsiveness */
+        @media (max-width: 700px) {
+            .dashboard-card { width: 300px; right: 1rem; bottom: 1rem; }
+            .top-bar { padding: 0.8rem 1rem; }
+            .logo h1 { font-size: 1.3rem; }
+            .stats-badge { gap: 0.7rem; }
+        }
+        /* custom scroll */
+        .reports-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .reports-list::-webkit-scrollbar-track {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        .reports-list::-webkit-scrollbar-thumb {
+            background: #facc15;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="ui-container">
+    <div class="top-bar">
+        <div class="logo">
+            <h1>🛣️ RoadWatch</h1>
+            <span>citizen • transparency • action</span>
+        </div>
+        <div class="stats-badge">
+            <div class="stat"><i class="fas fa-road"></i> <span id="totalReportsCount">0</span> Reports</div>
+            <div class="stat"><i class="fas fa-coins"></i> <span id="totalBudgetDisplay">2.45M</span> ₹ tracked</div>
+        </div>
+    </div>
+    <div class="dashboard-card">
+        <div class="card-header">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h2>Report Road Issue</h2>
+        </div>
+        <div class="card-content">
+            <div class="report-form">
+                <div class="input-group">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <input type="text" id="locationInput" placeholder="Location / Street name" value="MG Road Junction">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-chart-line"></i>
+                    <select id="issueType">
+                        <option value="Pothole">🕳️ Pothole</option>
+                        <option value="Crack">⚠️ Crack / Surface damage</option>
+                        <option value="Drainage">💧 Poor drainage</option>
+                        <option value="Signage">🚦 Missing Signage</option>
+                    </select>
+                </div>
+                <button class="submit-btn" id="submitReportBtn"><i class="fas fa-paper-plane"></i> Submit Report</button>
+            </div>
+            <div class="expense-track">
+                <span><i class="fas fa-chart-simple"></i> Public spending (this quarter)</span>
+                <span><strong id="expenseValue">₹ 342,000</strong></span>
+            </div>
+            <div class="reports-list">
+                <h4><i class="fas fa-list-ul"></i> Recent citizen reports</h4>
+                <div id="reportListContainer">
+                    <div class="report-item"> <span>📍 Nehru Nagar</span> <span class="report-badge">Pothole</span> </div>
+                    <div class="report-item"> <span>📍 Sector 22</span> <span class="report-badge">Crack</span> </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="legend">
+        <i class="fas fa-chart-line"></i> <span>Real-time 3D road quality</span>
+        <i class="fas fa-eye" style="margin-left: 12px;"></i> <span>Dynamic overlay</span>
+    </div>
+</div>
+
+<!-- Three.js Scene -->
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+    // --- setup scene, camera, renderers ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x050b1a);
+    scene.fog = new THREE.FogExp2(0x050b1a, 0.008);
+    
+    // camera
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(12, 6, 14);
+    camera.lookAt(0, 0, 0);
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true; // shadows
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.body.appendChild(renderer.domElement);
+    
+    // CSS2 renderer for labels
+    const labelRenderer = new CSS2DRenderer();
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.top = '0px';
+    labelRenderer.domElement.style.left = '0px';
+    labelRenderer.domElement.style.pointerEvents = 'none';
+    document.body.appendChild(labelRenderer.domElement);
+    
+    // controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.autoRotate = false;
+    controls.enableZoom = true;
+    controls.zoomSpeed = 1.2;
+    controls.target.set(0, 1, 0);
+    
+    // --- lighting ---
+    // ambient
+    const ambientLight = new THREE.AmbientLight(0x404060);
+    scene.add(ambientLight);
+    // directional light
+    const dirLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
+    dirLight.position.set(5, 10, 7);
+    dirLight.castShadow = true;
+    dirLight.receiveShadow = true;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
+    scene.add(dirLight);
+    // fill light from below
+    const fillLight = new THREE.PointLight(0x2266ff, 0.3);
+    fillLight.position.set(0, -2, 0);
+    scene.add(fillLight);
+    // back rim light
+    const rimLight = new THREE.PointLight(0xffaa66, 0.5);
+    rimLight.position.set(-3, 3, -4);
+    scene.add(rimLight);
+    
+    // animated point light for effects
+    const colorLight = new THREE.PointLight(0xff6600, 0.6);
+    colorLight.position.set(2, 1.5, 2);
+    scene.add(colorLight);
+    
+    // --- helper grid and ground reflection---
+    const gridHelper = new THREE.GridHelper(30, 20, 0x88aaff, 0x335588);
+    gridHelper.position.y = -0.2;
+    gridHelper.material.transparent = true;
+    gridHelper.material.opacity = 0.35;
+    scene.add(gridHelper);
+    
+    // main road surface (curved plane with slight displacement)
+    const roadWidth = 6;
+    const roadLength = 18;
+    const roadGeometry = new THREE.PlaneGeometry(roadLength, roadWidth, 40, 40);
+    roadGeometry.rotateX(-Math.PI / 2);
+    // vertex colors or displacement: simulate damage points
+    const positions = roadGeometry.attributes.position.array;
+    const colors = [];
+    // store damage intensity for later
+    for (let i = 0; i < positions.length / 3; i++) {
+        const x = positions[i*3];
+        const z = positions[i*3+2];
+        let yOffset = 0;
+        // random bumps and potholes simulation
+        if (Math.abs(x) < 5 && Math.abs(z) < 2.5) {
+            // create some pothole areas
+            const noise = Math.sin(x * 1.8) * Math.cos(z * 2.2) * 0.08;
+            yOffset = noise - 0.03;
+            if ((x > -2 && x < 1 && z > -1 && z < 1.2)) yOffset -= 0.1; // deeper pothole
+            if ((x > 3 && x < 5 && z > -1.5 && z < 0.5)) yOffset -= 0.08;
+        } else {
+            yOffset = Math.sin(x * 1.2) * 0.02;
+        }
+        positions[i*3+1] = yOffset;
+        
+        // color mapping: red-ish for damage, grey for normal
+        const damageFactor = Math.abs(yOffset) > 0.07 ? 0.8 : 0.2;
+        const r = 0.4 + damageFactor * 0.5;
+        const g = 0.3 + (1-damageFactor)*0.3;
+        const b = 0.3 + (1-damageFactor)*0.2;
+        colors.push(r, g, b);
+    }
+    roadGeometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
+    const roadMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0.1, side: THREE.DoubleSide });
+    const roadMesh = new THREE.Mesh(roadGeometry, roadMaterial);
+    roadMesh.receiveShadow = true;
+    roadMesh.castShadow = true;
+    scene.add(roadMesh);
+    
+    // add road markings (lines)
+    const lineMaterial = new THREE.MeshStandardMaterial({ color: 0xffdd99, emissive: 0x442200 });
+    const centerLine = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, roadLength-1), lineMaterial);
+    centerLine.position.set(0, 0.03, 0);
+    scene.add(centerLine);
+    const edgeLeft = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.05, roadLength), new THREE.MeshStandardMaterial({ color: 0xccccaa }));
+    edgeLeft.position.set(-roadWidth/2 + 0.2, 0.03, 0);
+    scene.add(edgeLeft);
+    const edgeRight = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.05, roadLength), new THREE.MeshStandardMaterial({ color: 0xccccaa }));
+    edgeRight.position.set(roadWidth/2 - 0.2, 0.03, 0);
+    scene.add(edgeRight);
+    
+    // dynamic floating particles for "monitoring" feel
+    const particleCount = 800;
+    const particleGeometry = new THREE.BufferGeometry();
+    const particlePositions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) {
+        particlePositions[i*3] = (Math.random() - 0.5) * 35;
+        particlePositions[i*3+1] = Math.random() * 5;
+        particlePositions[i*3+2] = (Math.random() - 0.5) * 20;
+    }
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+    const particleMat = new THREE.PointsMaterial({ color: 0x77aaff, size: 0.05, transparent: true, opacity: 0.5 });
+    const particles = new THREE.Points(particleGeometry, particleMat);
+    scene.add(particles);
+    
+    // 3D markers for reported issues (dynamic)
+    const markerGroup = [];
+    function createMarker(x, z, type) {
+        const color = type === 'Pothole' ? 0xff4444 : (type === 'Crack' ? 0xffaa44 : 0x44aaff);
+        const coneGeo = new THREE.ConeGeometry(0.22, 0.6, 8);
+        const markerMat = new THREE.MeshStandardMaterial({ color: color, emissive: 0x331100 });
+        const cone = new THREE.Mesh(coneGeo, markerMat);
+        cone.position.set(x, 0.3, z);
+        cone.castShadow = true;
+        const ringGeo = new THREE.TorusGeometry(0.3, 0.05, 16, 32);
+        const ringMat = new THREE.MeshStandardMaterial({ color: 0xffaa55 });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = 0.1;
+        cone.add(ring);
+        scene.add(cone);
+        
+        // CSS2D Label
+        const div = document.createElement('div');
+        div.textContent = `⚠️ ${type}`;
+        div.style.backgroundColor = 'rgba(0,0,0,0.7)';
+        div.style.color = '#ffcc66';
+        div.style.fontSize = '12px';
+        div.style.padding = '2px 6px';
+        div.style.borderRadius = '20px';
+        div.style.border = '1px solid #ffaa44';
+        div.style.fontWeight = 'bold';
+        div.style.backdropFilter = 'blur(4px)';
+        div.style.whiteSpace = 'nowrap';
+        const labelObj = new CSS2DObject(div);
+        labelObj.position.set(x, 0.65, z);
+        scene.add(labelObj);
+        return { mesh: cone, label: labelObj };
+    }
+    
+    // initial demo markers
+    const demoReports = [
+        { x: -1.2, z: -2.5, type: 'Pothole' },
+        { x: 2.4, z: 1.8, type: 'Crack' },
+        { x: 0.5, z: 4.2, type: 'Drainage' }
+    ];
+    let markers = [];
+    demoReports.forEach(r => {
+        const m = createMarker(r.x, r.z, r.type);
+        markers.push(m);
+    });
+    
+    // data store for reports & budget simulation
+    let reportsArray = [
+        { location: "Nehru Nagar", type: "Pothole", x: -1.2, z: -2.5 },
+        { location: "Sector 22", type: "Crack", x: 2.4, z: 1.8 },
+        { location: "Civil Lines", type: "Drainage", x: 0.5, z: 4.2 }
+    ];
+    let totalBudgetSpent = 342000; // ₹
+    const baseBudgetAllocation = 2450000; // 2.45M tracked
+    
+    function updateUI() {
+        document.getElementById('totalReportsCount').innerText = reportsArray.length;
+        document.getElementById('expenseValue').innerHTML = `₹ ${totalBudgetSpent.toLocaleString()}`;
+        document.getElementById('totalBudgetDisplay').innerHTML = `${(baseBudgetAllocation/1000000).toFixed(2)}M ₹ tracked`;
+        const container = document.getElementById('reportListContainer');
+        container.innerHTML = '';
+        reportsArray.slice().reverse().forEach(report => {
+            const div = document.createElement('div');
+            div.className = 'report-item';
+            div.innerHTML = `<span>📍 ${report.location}</span><span class="report-badge">${report.type}</span>`;
+            container.appendChild(div);
+        });
+    }
+    
+    // add new report and update 3D marker
+    function addReport(location, type) {
+        // assign random x,z on road area
+        const x = (Math.random() - 0.5) * 7;
+        const z = (Math.random() - 0.5) * 9;
+        const newReport = { location, type, x, z };
+        reportsArray.push(newReport);
+        const markerObj = createMarker(x, z, type);
+        markers.push(markerObj);
+        // simulate spending increase based on issue type severity
+        let cost = 0;
+        if (type === 'Pothole') cost = 28000;
+        else if (type === 'Crack') cost = 15000;
+        else if (type === 'Drainage') cost = 42000;
+        else cost = 9000;
+        totalBudgetSpent += cost;
+        updateUI();
+        // add floating animation to new marker
+        const mesh = markerObj.mesh;
+        mesh.scale.set(0,0,0);
+        setTimeout(() => {
+            mesh.scale.set(1,1,1);
+        }, 10);
+        // light flash effect
+        colorLight.intensity = 1.0;
+        setTimeout(() => { colorLight.intensity = 0.6; }, 300);
+        // also update the road vertex colors? dynamic re-paint would be heavy, but we add decal effect
+        // add a temporary glowing sphere
+        const glowGeo = new THREE.SphereGeometry(0.28, 8, 8);
+        const glowMat = new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xff4400, emissiveIntensity: 0.8, transparent: true });
+        const tempGlow = new THREE.Mesh(glowGeo, glowMat);
+        tempGlow.position.set(x, 0.2, z);
+        scene.add(tempGlow);
+        setTimeout(() => scene.remove(tempGlow), 600);
+    }
+    
+    // submit button logic
+    document.getElementById('submitReportBtn').addEventListener('click', () => {
+        const location = document.getElementById('locationInput').value.trim();
+        const issueType = document.getElementById('issueType').value;
+        if (location === "") {
+            alert("Please enter a location");
+            return;
+        }
+        addReport(location, issueType);
+        document.getElementById('locationInput').value = "";
+        // show success toast-like via small animation
+        const btn = document.getElementById('submitReportBtn');
+        btn.style.transform = 'scale(0.96)';
+        setTimeout(() => btn.style.transform = '', 150);
+    });
+    
+    // initial UI load
+    updateUI();
+    
+    // Animated trees / ambient decorations
+    const treeMat = new THREE.MeshStandardMaterial({ color: 0x5c9e5e });
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B });
+    for (let i = -7; i <= 7; i+=2.5) {
+        if (Math.abs(i) < 4) continue;
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 0.8, 6), trunkMat);
+        trunk.position.set(i, -0.1, -6);
+        trunk.castShadow = true;
+        const foliage = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.9, 8), treeMat);
+        foliage.position.set(i, 0.45, -6);
+        foliage.castShadow = true;
+        scene.add(trunk);
+        scene.add(foliage);
+        
+        const trunkR = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 0.8, 6), trunkMat);
+        trunkR.position.set(i, -0.1, 6.2);
+        trunkR.castShadow = true;
+        const foliageR = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.9, 8), treeMat);
+        foliageR.position.set(i, 0.45, 6.2);
+        foliageR.castShadow = true;
+        scene.add(trunkR);
+        scene.add(foliageR);
+    }
+    
+    // street lamps
+    const lampMat = new THREE.MeshStandardMaterial({ color: 0xccaa77, emissive: 0x442200 });
+    const lampLight = new THREE.PointLight(0xffaa66, 0.5, 12);
+    const lampPole = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 2.2, 6), lampMat);
+    lampPole.position.set(4.2, 0.8, -3);
+    lampPole.castShadow = true;
+    const lampHead = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 6), new THREE.MeshStandardMaterial({ color: 0xffdd99, emissive: 0xff6600 }));
+    lampHead.position.set(4.2, 1.9, -3);
+    scene.add(lampPole);
+    scene.add(lampHead);
+    scene.add(lampLight.clone().position.set(4.2, 1.7, -3));
+    
+    const lampPole2 = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 2.2, 6), lampMat);
+    lampPole2.position.set(-3.8, 0.8, 3.5);
+    lampPole2.castShadow = true;
+    const lampHead2 = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 6), new THREE.MeshStandardMaterial({ color: 0xffdd99, emissive: 0xff6600 }));
+    lampHead2.position.set(-3.8, 1.9, 3.5);
+    scene.add(lampPole2);
+    scene.add(lampHead2);
+    scene.add(new THREE.PointLight(0xffaa66, 0.45, 12).position.set(-3.8, 1.7, 3.5));
+    
+    // floating camera animation subtle for dynamic feel
+    let time = 0;
+    // animate particles and light and markers rotation
+    function animate() {
+        requestAnimationFrame(animate);
+        time += 0.012;
+        
+        // rotate particles gently
+        particles.rotation.y = time * 0.05;
+        particles.rotation.x = Math.sin(time * 0.2) * 0.1;
+        
+        // move color light around road
+        colorLight.position.x = Math.sin(time) * 2.5;
+        colorLight.position.z = Math.cos(time * 0.7) * 3;
+        
+        // bobbing markers
+        markers.forEach((mark, idx) => {
+            if (mark.mesh) {
+                mark.mesh.position.y = 0.3 + Math.sin(time * 3 + idx) * 0.03;
+            }
+            if (mark.label) {
+                mark.label.position.y = 0.68 + Math.sin(time * 3.5 + idx) * 0.02;
+            }
+        });
+        
+        // slight road shine
+        roadMaterial.emissiveIntensity = 0.1 + Math.sin(time * 2) * 0.05;
+        
+        controls.update(); // update orbit
+        renderer.render(scene, camera);
+        labelRenderer.render(scene, camera);
+    }
+    
+    animate();
+    
+    // resize handler
+    window.addEventListener('resize', onWindowResize, false);
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    
+    // intro small console
+    console.log("RoadWatch 3D Active — Transparency & Citizen Reporting");
+</script>
+</body>
+</html>
